@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import os
 import logging
 import json
+import time
+
+from OpenSSL import SSL
 from flask import Flask, request, Response, abort
 from functools import wraps
 from sqlalchemy import create_engine, MetaData, Table, Column, String,\
                    select, and_, Integer
 from collections import deque
 from sqlalchemy.exc import *
-import time
 from datetime import datetime
 from auth_handler import auth
 from includes.jsonify import json_to_objs, objs_to_json
@@ -21,7 +24,7 @@ log.setLevel(logging.ERROR)
 path="/"
 
 app = Flask(__name__)
-auth_ = auth()
+auth_ = None #auth()
 server_data = deque(maxlen=100000)
 
 def write_local_db(rawdata):
@@ -91,8 +94,8 @@ def pull():
                                                "data": result_as_dict}
                 data_to_return = json.loads(objs_to_json(data_to_return)) # A bit backward, ne
                 all_data.append(data_to_return)
-   
-    #return type(json.dumps(str(all_data)) 
+
+    #return type(json.dumps(str(all_data))
     return json.dumps(all_data)
 
 
@@ -107,7 +110,11 @@ def catch_data():
             logging.error("Unable to parse JSON from '%s'" % request)
             return '{"result":"failure", "reason":"Check server logs"}'
         else:
-            server_data.append((jsdata['table'], jsdata['data']  )) 
+            server_type = os.getenv('SNOOPY_SERVER', 'flask')
+            if server_type == 'apache':
+                write_local_db([jsdata])
+            else:
+                server_data.append((jsdata['table'], jsdata['data']))
     else:
         logging.error("Unable to parse JSON from '%s'" % request)
         return '{"result":"failure", "reason":"Check server logs"}'
@@ -132,21 +139,30 @@ def prep(dbms="sqlite:///snoopy.db"):
     create_tables(db)
     tables = get_tables()
     metadata = MetaData(db)
-    metadata.reflect() 
+    metadata.reflect()
 
-def run_webserver(port=9001,ip="0.0.0.0",_db=None):
+def run_webserver(port=9001,ip="0.0.0.0",cert=None,key=None,_db=None):
     #create_db_tables()
     global db
     global tables
     global metadata
+    global auth_
 
+    auth_ = auth(rawdb=_db)
     db = _db
     if not _db:
         dbms="sqlite:///snoopy.db"
         db=create_engine(dbms)
     tables = get_tables()
     metadata = MetaData(db)
-    app.run(host=ip, port=port)
+
+    ssl_context=None
+    if cert and key:
+        ssl_context=SSL.Context(SSL.TLSv1_2_METHOD)
+        ssl_context.use_privatekey_file(key)
+        ssl_context.use_certificate_file(cert)
+
+    app.run(host=ip, port=port, ssl_context=ssl_context)
 
 if __name__ == "__main__":
     run_webserver()

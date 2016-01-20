@@ -14,6 +14,10 @@ apt-get install ntpdate --force-yes --yes
 #if ps aux | grep ntp | grep -qv grep; then 
 if [ -f /etc/init.d/ntp ]; then
 	/etc/init.d/ntp stop
+else 
+	# Needed for Kali Linux build on Raspberry Pi
+	apt-get install ntp
+	/etc/init.d/ntp stop
 fi
 echo "[+] Setting time with ntp"
 ntpdate ntp.ubuntu.com 
@@ -30,19 +34,20 @@ apt-get update
 
 # Packages
 echo "[+] Installing required packages..."
-apt-get install --force-yes --yes python-setuptools autossh python-psutil python2.7-dev libpcap0.8-dev python-sqlalchemy ppp tcpdump python-serial sqlite3 python-requests iw build-essential python-bluez python-flask python-gps python-dateutil python-dev
+apt-get install --force-yes --yes python-setuptools autossh python-psutil python2.7-dev libpcap0.8-dev ppp tcpdump python-serial sqlite3 python-requests iw build-essential python-bluez python-flask python-gps python-dateutil python-dev libxml2-dev libxslt-dev pyrit mitmproxy
 
 # Python packages
 
 easy_install pip
 easy_install smspdu
 
+pip install sqlalchemy==0.7.4
 pip uninstall requests -y
 pip install -Iv https://pypi.python.org/packages/source/r/requests/requests-0.14.2.tar.gz   #Wigle API built on old version
 pip install httplib2
 pip install BeautifulSoup
 pip install publicsuffix
-pip install mitmproxy
+#pip install mitmproxy
 pip install pyinotify
 pip install netifaces
 pip install dnslib
@@ -56,10 +61,10 @@ echo "[+] Installing pyserial 2.6"
 pip install https://pypi.python.org/packages/source/p/pyserial/pyserial-2.6.tar.gz
 
 echo "[+] Downloading pylibpcap..."
-pip install http://switch.dl.sourceforge.net/project/pylibpcap/pylibpcap/0.6.4/pylibpcap-0.6.4.tar.gz
+pip install https://sourceforge.net/projects/pylibpcap/files/latest/download?source=files#egg=pylibpcap
 
 echo "[+] Downloading dpkt..."
-pip install http://dpkt.googlecode.com/files/dpkt-1.8.tar.gz
+pip install https://dpkt.googlecode.com/files/dpkt-1.8.tar.gz
 
 echo "[+] Installing patched version of scapy..."
 pip install ./setup/scapy-latest-snoopy_patch.tar.gz
